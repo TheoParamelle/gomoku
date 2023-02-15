@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+
+import random
+import sys
+from enum import Enum
+
+SIZE = 20
+
+
+class Mark(Enum):
+    EMPTY = '0'
+    X = 'x'
+    O = 'o'
+
+
+PATTERNS = {
+    '|xxxx_|': 10 ** 9,
+    '|xxx_x|': 10 ** 9,
+    '|xx_xx|': 10 ** 9,
+
+    '| xxx_ |': 10 ** 7,
+    '| xx_x |': 10 ** 7,
+    '|x x_x x|': 10 ** 7,
+
+    '|xxx _|': 10 ** 5,
+    '|xx x_|': 10 ** 5,
+    '|x xx_|': 10 ** 5,
+    '| xxx_|': 10 ** 5 + 1,
+    '|xxx_ |': 10 ** 5 + 1,
+    '|xx _x|': 10 ** 5,
+    '|x x_x|': 10 ** 5,
+    '| xx_x|': 10 ** 5,
+    '|xx_x |': 10 ** 5,
+    '|xx_ x|': 10 ** 5,
+
+    '| xx _ |': 10 ** 3,
+    '| x x_ |': 10 ** 3,
+    '|  xx_ |': 10 ** 3 + 1,
+    '| xx_  |': 10 ** 3 + 1,
+    '| x _x |': 10 ** 3,
+    '|  x_x |': 10 ** 3 + 1,
+
+    '|xx  _|': 10,
+    '|x x _|': 10,
+    '|xx _ |': 10,
+    '|x x_ |': 10,
+    '|x _ x|': 10,
+    '|xx_  |': 11,
+
+    '| x  _ |': 1,
+    '|  x _ |': 1,
+    '|   x_ |': 2,
+    '| x _ |': 1,
+    '|  x_ |': 2,
+    '| x_  |': 2,
+}
+
+
+class Board:
+    size = 20
+    playBoard = [[Mark.EMPTY.value for x in range(20)] for y in range(20)]
+    moves = []
+
+    def get_size():
+        return Board.size
+
+    def get_board():
+        return Board.playBoard
+
+    def make_moveIA(move):
+        Board.playBoard[move[0]][move[1]] = 'x'
+        Board.moves.append(move)
+
+    def make_movePlayer(move):
+        Board.playBoard[move[0]][move[1]] = 'o'
+        Board.moves.append(move)
+
+    def is_mark(x, y, mark):
+        return 0 <= x < Board.size and 0 <= y < Board.size and Board.playBoard[x][y] == mark
+
+    def is_empty(x, y):
+        return Board.is_mark(x, y, Mark.EMPTY.value)
+
+    def grade(x, y, mark):
+        score = 0
+
+        def matches(pattern, dir):
+            p = pattern.index('_')
+            for i in range(len(pattern)):
+                xx = x + (i - p) * dir[0]
+                yy = y + (i - p) * dir[1]
+                if pattern[i] == ' ' and not Board.is_empty(xx, yy):
+                    return False
+                if pattern[i] == 'x' and not Board.is_mark(xx, yy, mark):
+                    return False
+                if pattern[i] == '|' and Board.is_mark(xx, yy, mark):
+                    return False
+            return True
+
+        matched = {}
+        for dir in [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]:
+            for pattern, value in PATTERNS.items():
+                if matched.get((-dir[0], -dir[1])) == pattern:
+                    break
+                if matches(pattern, dir):
+                    score += value
+                    matched[dir] = pattern
+                    break
+
+        if score >= 10 ** 5 + 10 ** 3:
+            score += 10 ** 7
+        elif score >= 2 * 10 ** 3:
+            score += 10 ** 6
+        return score
+
+    def ai():
+        best, score = [], 0
+
+        for i in range(Board.size):
+            for j in range(Board.size):
+                if not Board.is_empty(i, j):
+                    continue
+                ia_score = Board.grade(i, j, 'x')
+                human_score = Board.grade(i, j, 'o')
+                global_score = ia_score + human_score / 10
+                if global_score > score:
+                    score = global_score
+                    best = [(i, j)]
+                elif global_score == score:
+                    best.append((i, j))
+        if best:
+            move = random.choice(best)
+            move = (move[0], move[1])
+            return move
+
+
+class Info:
+    timeout_turn = 0
+    timeout_match = 0
+    max_memory = 0
+    time_left = 0
+    game_type = 0
+    rule = 0
+    evaluate = 0
+    folder = ''
+
+
+class Brain:
+    gameOn = False
+    matchOn = False
+
+    def start_brain():
+        Board.get_board()
+        print("OK")
+
+    def brain_begin():
+        X = random.randint(5, 15)
+        Y = random.randint(5, 15)
+        Tuple_1 = ((X, Y))
+        Board.make_moveIA(Tuple_1)
+        print(str(Tuple_1[1]) + "," + str(Tuple_1[0]))
+        return
+
+    def brain_turn():
+        move = Board.ai()
+        Board.make_moveIA((move[0], move[1]))
+        print(str(move[1]) + "," + str(move[0]))
+
+    def brain_about():
+        print('name="Gomoku", version="1.0", author="Théo - Loïc", country="Belgique"')
+
+    def brain_end():
+        Brain.gameOn = False
+        Brain.matchOn = False
+        sys.exit(0)
+
+    def unknown(commands):
+        print("UNKNOWN")
+
+
+class com():
+    def send_command(commands):
+        cmd = commands.split(" ", 1)[0]
+        if cmd == "START":
+            start(commands)
+        elif cmd == "BEGIN":
+            begin()
+        elif cmd == "BOARD":
+            board(commands)
+        elif cmd == "TURN":
+            turn(commands)
+        elif cmd == "INFO":
+            info(commands)
+        elif cmd == "ABOUT":
+            about()
+        elif cmd == "END":
+            end()
+        else:
+            cmd = "UNKNOWN"
+            Brain.unknown(cmd)
+            return
+
+
+def start(commands):
+    try:
+        porc = commands.split(" ", 1)[1]
+        if porc.isnumeric():
+            size = int(porc)
+            if size < 5:
+                print("ERROR message - unsupported size")
+                return
+            Brain.gameOn = True
+            Brain.start_brain()
+    except:
+        print("ERROR message - unsupported size or other error")
+
+
+def begin():
+    if Brain.matchOn == False and Brain.gameOn == True:
+        Brain.brain_begin()
+        Brain.matchOn = True
+    else:
+        print("ERROR message - game are already launch or is not set")
+    return 0
+
+
+def board(commands):
+    if not Brain.gameOn:
+        return
+    while 1:
+        command = input()
+        if command == "DONE":
+            Brain.brain_turn()
+            return
+        cmdBoard(command)
+    return
+
+
+def cmdBoard(commands):
+    cmd = commands.split(",")
+    if len(cmd) != 3:
+        print("ERROR message - bad input for board commands")
+        return
+    if cmd[0].isnumeric() and cmd[1].isnumeric() and cmd[2].isnumeric():
+        x = int(cmd[0])
+        y = int(cmd[1])
+        player = int(cmd[2])
+    else:
+        print("ERROR message - no int input for board commands")
+        return
+    if player > 3:
+        print("ERROR message - player input is between 1 and 3 for board commands")
+        return
+    if x > 19 or x < 0 or y > 19 or y < 0:
+        print("ERROR message - x and y input is out of the map")
+        return
+    if Board.playBoard[y][x] == 'x' or Board.playBoard[y][x] == 'o':
+        print("ERROR message - position x =", str(x), "and y =", str(y), "is not empty")
+        return
+    if player == 1:
+        Board.playBoard[y][x] = 'o'
+    if player == 2:
+        Board.playBoard[y][x] = 'x'
+
+
+def turn(commands):
+    cmd = commands.split(",")
+    if len(cmd) != 2:
+        print("ERROR message - bad input for TURN commands")
+        return
+    cmd = commands.split(" ", 1)[1]
+    porc = cmd.split(",", 1)[0]
+    porc_deux = cmd.split(",", 1)[1]
+    if porc.isnumeric() and porc_deux.isnumeric() and Brain.gameOn != False:
+        x = int(porc)
+        y = int(porc_deux)
+    else:
+        print("ERROR message - unsupported coordinate or game not launch")
+        return
+    if not Brain.matchOn:
+        Brain.matchOn = True
+    if x > 19 or x < 0 or y > 19 or y < 0:
+        print("ERROR message - x and y input is out of the map")
+        return
+    if Board.playBoard[y][x] == 'o' or Board.playBoard[y][x] == 'x':
+        print("ERROR message - impossible to play here because there is already 'o' or 'x'")
+        return
+    Board.make_movePlayer((y, x))
+    Brain.brain_turn()
+    return
+
+
+def info(commands):
+    cmd = commands.split(" ")
+    if len(cmd) != 3:
+        print("ERROR message - bad input for info commands")
+        return
+    if cmd[1] == "timeout_match":
+        Info.timeout_match = int(cmd[2])
+    if cmd[1] == "time_left":
+        Info.time_left = int(cmd[2])
+    if cmd[1] == "max_memory":
+        Info.max_memory = int(cmd[2])
+    return
+
+
+def end():
+    Brain.brain_end()
+
+
+def about():
+    Brain.brain_about()
+    return
+
+
+def main():
+    while 1:
+        try:
+            commands = input()
+            com.send_command(commands)
+        except IOError:
+            print("Error IOE\n")
+            sys.exit(84)
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
